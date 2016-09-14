@@ -1,5 +1,5 @@
-# AlgorithmAnalysis
-## CSC 425
+# Analysis of Algorithms
+## CSC 425 @ UVIC w/ Wendy Myrvold
 
 ### Assignment 1
 
@@ -12,3 +12,8 @@ To run:
 `out0KEY.text` is the expected terse output.
 `out1KEY.text` is the expected verbose output.
 
+### Assignment 2
+
+### Assignment 3
+
+### Assignment 4
