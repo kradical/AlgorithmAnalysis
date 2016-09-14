@@ -6,7 +6,7 @@
 
 int NMAX_DIGITS = 1;
 int DEGREE_DIGITS = 1;
-char verbose;
+char VERBOSE;
 
 void set_digit_counts(void);
 void is_valid_vertex_count(int);
@@ -14,13 +14,16 @@ int read_graph(int, int [NMAX][NMAX]);
 int read_vertex(int, int, int [NMAX][NMAX]);
 void check_degree(int, int);
 int is_valid_vertex(int, int);
+int is_valid_graph(int, int[NMAX][NMAX]);
 int read_dominating_set(int, int [NMAX + 1]);
 void build_set(int [NMAX][NMAX], int[NMAX + 1], int[NMAX]);
 int check_set(int, int[NMAX]);
 
+// Utility to check if fscanf failed to read a value.
+// Exits if fscanf(...) == 0 as this implies an invalid graph.
 void check_int_fscanf(int* d) {
     if(fscanf(stdin, "%d", d) != 1) {
-        if(verbose) {
+        if(VERBOSE) {
             printf("Improper graph format, failed to read value\n");
         } else {
             printf("  -1\n");
@@ -31,17 +34,22 @@ void check_int_fscanf(int* d) {
 
 int main(int argc, char* argv[]) {
     if(argc != 2) {
-        fprintf(stderr, "\nUSAGE:\t./a.out 0|1\n0 for terse\n1 for verbose\n");
+        fprintf(stderr, "USAGE:\t./a.out 0|1\n0 for terse\n1 for verbose\n");
         exit(EXIT_FAILURE);
     }
 
-    verbose = atoi(argv[argc - 1]);
+    VERBOSE = atoi(argv[argc - 1]);
 
-    set_digit_counts();
+    if(VERBOSE) {
+        set_digit_counts();
+    }
 
     int vertex_count;
+    // adjacency list format, room for all vertices' neighbours plus 1 for writing a negative 1
     int graph[NMAX][NMAX] = { 0 };
+    // enough room for all vertices plus 1 for writing a negative 1
     int dom_set[NMAX + 1] = { 0 };
+    // enough room for all vertices
     int node_set[NMAX] = { 0 };
 
     int graph_ndx = 0;
@@ -50,7 +58,7 @@ int main(int argc, char* argv[]) {
         is_valid_vertex_count(vertex_count);
 
         graph_ndx++;
-        if(verbose) {
+        if(VERBOSE) {
             printf("Graph %*d:\n", NMAX_DIGITS, graph_ndx);
         } else {
             printf("  %*d", NMAX_DIGITS, graph_ndx);
@@ -59,7 +67,7 @@ int main(int argc, char* argv[]) {
         invalid_node = read_graph(vertex_count, graph);
         if(!invalid_node) {
             if(!is_valid_graph(vertex_count, graph)) {
-                if(verbose) {
+                if(VERBOSE) {
                     printf("Graph   %*d: BAD GRAPH\n", NMAX_DIGITS, graph_ndx);
                 }
                 return EXIT_FAILURE;
@@ -71,28 +79,36 @@ int main(int argc, char* argv[]) {
             build_set(graph, dom_set, node_set);
 
             if(check_set(vertex_count, node_set)) {
-                if(verbose) {
+                if(VERBOSE) {
                     printf("Graph   %*d: OK\n", NMAX_DIGITS, graph_ndx);
                 } else {
                     printf("   1\n");
                 }
             } else {
-                if(verbose) {
+                if(VERBOSE) {
                     printf("Graph   %*d: BAD CERTIFICATE\n", NMAX_DIGITS, graph_ndx);
                 } else {
                     printf("   0\n");
                 }
             }
         } else {
-            d = invalid_node ? invalid_node : invalid_dom_node;
-            if(verbose) {
-                printf("Error- Value %*d in the certificate is not in the range [0, %*d]\n", NMAX_DIGITS, d, NMAX_DIGITS, vertex_count - 1);
-                printf("Graph   %*d: BAD CERTIFICATE\n", NMAX_DIGITS, graph_ndx);
+            if(invalid_node) {
+                if(VERBOSE) {
+                    printf("Improper graph format, value %*d is not in the range [0, %*d]\n", NMAX_DIGITS, invalid_node, NMAX_DIGITS, vertex_count - 1);
+                } else {
+                    printf("  -1\n");
+                }
+                return EXIT_FAILURE;
             } else {
-                printf("   0\n");
+                if(VERBOSE) {
+                    printf("Error- Value %*d in the certificate is not in the range [0, %*d]\n", NMAX_DIGITS, invalid_dom_node, NMAX_DIGITS, vertex_count - 1);
+                    printf("Graph   %*d: BAD CERTIFICATE\n", NMAX_DIGITS, graph_ndx);
+                } else {
+                    printf("   0\n");
+                }
             }
         }
-        if(verbose) {
+        if(VERBOSE) {
             printf("=============================\n");
         }
 
@@ -104,8 +120,8 @@ int main(int argc, char* argv[]) {
     return EXIT_SUCCESS;
 }
 
+// Calculate number of digits for formatting.
 void set_digit_counts() {
-    // Calculate number of digits for formatting
     int nmax = NMAX;
     while(nmax /= 10) {
         NMAX_DIGITS++;
@@ -117,9 +133,11 @@ void set_digit_counts() {
     }
 }
 
+// Checks if the number of verties is valid.
+// Exits if graph is not valid.
 void is_valid_vertex_count(int d) {
     if(d < 0 ) {
-        if(verbose) {
+        if(VERBOSE) {
             printf("Improper graph format, negative vertex count\n");
         } else {
             printf("  -1\n");
@@ -128,7 +146,7 @@ void is_valid_vertex_count(int d) {
         exit(EXIT_FAILURE);
     }
     if(d > NMAX) {
-        if(verbose) {
+        if(VERBOSE) {
             printf("vertex count is %d max is %d. Increase NMAX and recompile.\n", d, NMAX);
         } else {
             printf("  -1\n");
@@ -137,8 +155,8 @@ void is_valid_vertex_count(int d) {
     }
 }
 
-// returns the node that is invalid or 0 if they are all valid
-// 0 will always be a valid node in a well formed graph
+// Returns the node that is invalid or 0 if they are all valid.
+// 0 will always be a valid node in a well formed graph.
 int read_graph(int vertex_count, int graph[NMAX][NMAX]) {
     int invalid_node = 0;
 
@@ -150,8 +168,9 @@ int read_graph(int vertex_count, int graph[NMAX][NMAX]) {
     return invalid_node;
 }
 
-// returns the node that is invalid or 0 if they are all valid
-// 0 will always be a valid node in a well formed graph
+// Reads [degree] neighbours for one vertex.
+// Returns the neighbour that is invalid or 0 if they are all valid.
+// 0 will always be a valid node in a well formed graph.
 int read_vertex(int vertex, int vertex_count, int graph[NMAX][NMAX]) {
     int degree;
     int invalid_node = 0;
@@ -159,29 +178,31 @@ int read_vertex(int vertex, int vertex_count, int graph[NMAX][NMAX]) {
     check_int_fscanf(&degree);
     check_degree(degree, vertex_count - 1);
 
-    if(verbose) {
+    if(VERBOSE) {
         printf("%*d(%*d):", NMAX_DIGITS, vertex, DEGREE_DIGITS, degree);
     }
     int i;
     for(i = 0; i < degree; i++) {
         check_int_fscanf(&graph[vertex][i]);
         invalid_node = is_valid_vertex(graph[vertex][i], vertex_count) ? graph[vertex][i] : invalid_node;
-        if(verbose) {
+        if(VERBOSE) {
             printf(" %*d", NMAX_DIGITS, graph[vertex][i]);
         }
     }
     graph[vertex][i] = -1;
 
-    if(verbose) {
+    if(VERBOSE) {
         printf("\n");
     }
     return invalid_node;
 }
 
+// Checks that the degree for a vertex is valid.
+// Exits if graph is invalid.
 void check_degree(int d, int vertex_count) {
     int max = vertex_count - 1;
     if(d < 0 || d > max) {
-        if(verbose) {
+        if(VERBOSE) {
             printf("Improper graph format. Degree %d is not in the range [0, %d]\n", d, max);
         } else {
             printf("  -1\n");
@@ -190,7 +211,7 @@ void check_degree(int d, int vertex_count) {
     }
 }
 
-// returns the node that is invalid or 0
+// Returns node number if invalid or 0.
 // 0 will always be a valid node in a well formed graph
 int is_valid_vertex(int d, int vertex_count) {
     int max = vertex_count - 1;
@@ -200,15 +221,16 @@ int is_valid_vertex(int d, int vertex_count) {
     return 0;
 }
 
-// returns the node that is invalid or 0 if they are all valid
-// 0 will always be a valid node in a well formed graph
+// Reads in the proposed dominating set.
+// Returns the node that is invalid or 0 if they are all valid.
+// 0 will always be a valid node in a well formed graph.
 int read_dominating_set(int vertex_count, int dom_set[NMAX + 1]) {
     int set_size;
     int invalid_node = 0;
 
     check_int_fscanf(&set_size);
     is_valid_vertex_count(set_size);
-    if(verbose) {
+    if(VERBOSE) {
         printf("Proposed dominating set:\n");
     }
 
@@ -216,18 +238,20 @@ int read_dominating_set(int vertex_count, int dom_set[NMAX + 1]) {
     for(i = 0; i < set_size; i++) {
         check_int_fscanf(&dom_set[i]);
         invalid_node = is_valid_vertex(dom_set[i], vertex_count) ? dom_set[i] : invalid_node;
-        if(verbose) {
+        if(VERBOSE) {
             printf("%*d ", NMAX_DIGITS, dom_set[i]);
         }
     }
     dom_set[i] = -1;
 
-    if(verbose) {
+    if(VERBOSE) {
         printf("\n");
     }
     return invalid_node;
 }
 
+// Checks the validity of a graph.
+// Returns 1 for valid and 0 for invalid.
 int is_valid_graph(int vertex_count, int graph[NMAX][NMAX]) {
     int i, j, k, neighbour, found_i;
     for(i = 0; i < vertex_count; i++) {
@@ -242,7 +266,7 @@ int is_valid_graph(int vertex_count, int graph[NMAX][NMAX]) {
                 }
             }
             if(!found_i) {
-                if(verbose) {
+                if(VERBOSE) {
                     printf("*** Error- adjacency matrix is not symmetric: A[%*d][%*d] = 1, A[%*d][%*d] = 0\n",
                         DEGREE_DIGITS, i, DEGREE_DIGITS, neighbour, DEGREE_DIGITS, neighbour, DEGREE_DIGITS, i);
                 } else {
@@ -256,6 +280,7 @@ int is_valid_graph(int vertex_count, int graph[NMAX][NMAX]) {
     return 1;
 }
 
+// Builds a set containing all the nodes that are in or neighbours of the dominating set.
 void build_set(int graph[NMAX][NMAX], int dom_set[NMAX + 1], int node_set[NMAX]) {
     int i, j;
 
@@ -267,16 +292,17 @@ void build_set(int graph[NMAX][NMAX], int dom_set[NMAX + 1], int node_set[NMAX])
     }
 }
 
+// Checks that the given node set contains all vertices in the graph.
+// Returns 1 for yes 0 for no.
 int check_set(int vertex_count, int node_set[NMAX]) {
     int i;
     for(i = 0; i < vertex_count; i++) {
         if(!node_set[i]) {
-            if(verbose) {
+            if(VERBOSE) {
                 printf("Error- Vertex %*d is not dominated\n", NMAX_DIGITS, i);
             }
             return 0;
         }
     }
-
     return 1;
 }
