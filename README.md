@@ -10,6 +10,7 @@ To run:
 - run `./a.out 1 < in.txt > out.txt` in verbose mode
 
 `out0KEY.text` is the expected terse output.
+
 `out1KEY.text` is the expected verbose output.
 
 ### Assignment 2
