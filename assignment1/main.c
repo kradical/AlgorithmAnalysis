@@ -34,7 +34,7 @@ void check_int_fscanf(int* d) {
 
 int main(int argc, char* argv[]) {
     if(argc != 2) {
-        fprintf(stderr, "USAGE:\t./a.out 0|1\n0 for terse\n1 for verbose\n");
+        fprintf(stderr, "USAGE:\t%s 0|1\n0 for terse\n\n1 for verbose\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -179,14 +179,14 @@ int read_vertex(int vertex, int vertex_count, int graph[NMAX][NMAX]) {
     check_degree(degree, vertex_count - 1);
 
     if(VERBOSE) {
-        printf("%*d(%*d):", NMAX_DIGITS, vertex, DEGREE_DIGITS, degree);
+        printf("%*d(%*d): ", NMAX_DIGITS, vertex, DEGREE_DIGITS, degree);
     }
     int i;
     for(i = 0; i < degree; i++) {
         check_int_fscanf(&graph[vertex][i]);
         invalid_node = is_valid_vertex(graph[vertex][i], vertex_count) ? graph[vertex][i] : invalid_node;
         if(VERBOSE) {
-            printf(" %*d", NMAX_DIGITS, graph[vertex][i]);
+            printf("%*d ", NMAX_DIGITS, graph[vertex][i]);
         }
     }
     graph[vertex][i] = -1;
@@ -251,13 +251,27 @@ int read_dominating_set(int vertex_count, int dom_set[NMAX + 1]) {
 }
 
 // Checks the validity of a graph.
+// Detects self loops, not mirrored edges, and double edges
 // Returns 1 for valid and 0 for invalid.
 int is_valid_graph(int vertex_count, int graph[NMAX][NMAX]) {
+    int found_edges[NMAX-1] = { 0 };
+
     int i, j, k, neighbour, found_i;
     for(i = 0; i < vertex_count; i++) {
         for(j = 0; j < vertex_count && graph[i][j] != -1; j++) {
             // the node i's jth neighbour search through j for i
             neighbour = graph[i][j];
+
+            //TODO make different error messages for loops and double edges
+            if(found_edges[neighbour]) {
+                if(VERBOSE) {
+                    printf("*** Error- adjacency matrix is not symmetric: A[%*d][%*d] = 1, A[%*d][%*d] = 0\n",
+                        DEGREE_DIGITS, i, DEGREE_DIGITS, neighbour, DEGREE_DIGITS, neighbour, DEGREE_DIGITS, i);
+                } else {
+                    printf("  -1\n");
+                }
+            }
+
             found_i = 0;
             for(k = 0; k < vertex_count && graph[neighbour][k] != -1; k++) {
                 if(graph[neighbour][k] == i) {
