@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
 
     int graph_ndx = 0;
     int invalid_node, invalid_dom_node, d;
-    while(fscanf(stdin, "%d", &vertex_count) > 0) {
+    while(fscanf(stdin, "%d", &vertex_count) == 1) {
         is_valid_vertex_count(vertex_count);
 
         graph_ndx++;
@@ -160,7 +160,7 @@ void read_vertex(int vertex, int vertex_count, int graph[NMAX][NMAX]) {
     int degree;
 
     check_int_fscanf(&degree);
-    check_degree(degree, vertex_count - 1);
+    check_degree(degree, vertex_count);
 
     if(VERBOSE) {
         printf("%*d(%*d): ", NMAX_DIGITS, vertex, DEGREE_DIGITS, degree);
