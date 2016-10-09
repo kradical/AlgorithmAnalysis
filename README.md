@@ -20,9 +20,8 @@ To run:
 - compile `gcc main.c`
 - run `./a.out < in.txt > out.txt`
 
-Check if it is a correct dominating set using assignment 1
-
-The output format of A2 is the input format of A1
+To check if it is a correct dominating set use assignment 1:
+- run `./a.out < in.txt | ../assignment1/a.out 0`
 
 ## Assignment 3
 
