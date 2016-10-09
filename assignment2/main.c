@@ -3,6 +3,7 @@
 #include <string.h>
 
 #define NMAX 512
+#define DEBUG 1
 
 void is_valid_vertex_count(int);
 void read_graph(int, int[NMAX][NMAX], int);
@@ -11,8 +12,11 @@ void check_degree(int, int, int);
 void check_symmetric(int, int[NMAX][NMAX], int);
 void check_vertex(int, int, int, int);
 void initialize_data(int*, int[NMAX], int[NMAX], int*, int[NMAX - 1], int*, int[NMAX - 1]);
-void min_dom_set(int, int, int[NMAX], int[NMAX], int, int[NMAX - 1], int, int[NMAX - 1], int[NMAX][NMAX]);
+void min_dom_set(int, int*, int[NMAX], int[NMAX], int*, int[NMAX - 1], int*, int[NMAX - 1], int, int, int[NMAX][NMAX]);
 
+#if DEBUG
+    void print_vec(int, int*);
+#endif
 // Utility to check if fscanf failed to read a value.
 // Exits if fscanf(...) == 0 as this implies an invalid graph.
 void check_int_fscanf(int* d) {
@@ -40,35 +44,45 @@ int main(int argc, char* argv[]) {
     int min_dom[NMAX - 1] = { 0 }; // minimum dominating set so far
 
 
-    int i, j, deg_i, graph_ndx = 1;
+    int i, j, deg_i, max_deg, graph_ndx = 1;
     while(fscanf(stdin, "%d", &vertex_count) == 1) {
-        // TODO memset the graph to 0 between readings
+        memset(graph, 0, NMAX * NMAX * sizeof(int));
         read_graph(vertex_count, graph, graph_ndx);
         check_symmetric(vertex_count, graph, graph_ndx);
 
         // initialize all the data
-        // n_dominated = 0;
+        n_dominated = 0;
         
-        // memset(num_choice, 0, NMAX * sizeof(int));
-        // for(i = 0; i < vertex_count; i++) {
-        //     for(j = 0; i < vertex_count; j++) {
-        //         // will be + 1 because of the all 1 diagonal
-        //         deg_i += graph[i][j];
-        //     }
-        //     num_choice[i] = deg_i;
-        // }
+        memset(num_choice, 0, NMAX * sizeof(int));
+        max_deg = 0;
+        for(i = 0; i < vertex_count; i++) {
+            deg_i = 0;
+            for(j = 0; j < vertex_count; j++) {
+                // will be + 1 because of the all 1 diagonal
+                deg_i += graph[i][j];
+            }
+            num_choice[i] = deg_i;
+            if(deg_i > max_deg) {
+                max_deg = deg_i;
+            }
+        }
 
-        // memset(num_dom, 0, NMAX * sizeof(int));
-        // size = 0;
-        // memset(dom, 0, (NMAX - 1) * sizeof(int));
-        // min_size = vertex_count;
+        memset(num_dom, 0, NMAX * sizeof(int));
+        size = 0;
+        memset(dom, 0, (NMAX - 1) * sizeof(int));
+        min_size = vertex_count;
 
-        // memset(min_dom, 0, (NMAX - 1) * sizeof(int));
-        // for(i = 0; i < vertex_count; i++) {
-        //     min_dom[i] = i;
-        // }
+        memset(min_dom, 0, (NMAX - 1) * sizeof(int));
+        for(i = 0; i < vertex_count; i++) {
+            min_dom[i] = i;
+        }
 
-        min_dom_set(0, n_dominated, num_choice, num_dom, size, dom, min_size, min_dom, graph);
+        min_dom_set(0, &n_dominated, num_choice, num_dom, &size, dom, &min_size, min_dom, vertex_count, max_deg, graph);
+        printf("\n%d\n", min_size);
+        for(i = 0; i < min_size; i++) {
+            printf("%5d", min_dom[i]);
+        }
+        printf("\n");
         graph_ndx++;
     }
     return EXIT_SUCCESS;
@@ -176,10 +190,84 @@ void check_symmetric(int vertex_count, int graph[NMAX][NMAX], int graph_ndx) {
 
 // recursively find the minimum dominating set
 // try to decide the status of vertex "level"
-void min_dom_set(int level, int n_dom, int num_choice[NMAX], int num_dom[NMAX], int size,
-    int dom[NMAX - 1], int min_size, int min_dom[NMAX - 1], int graph[NMAX][NMAX]) {
+void min_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX], int* size,
+    int dom[NMAX - 1], int* min_size, int min_dom[NMAX - 1], int vertex_count, int max_deg, int graph[NMAX][NMAX]) {
+    
+    #if DEBUG
+        printf("\nLEVEL: %d\n", level);
+        printf("# vertices dominated: %d\n", *n_dom);
+        printf("# choices per vertex:\n");
+        print_vec(vertex_count, num_choice);
+        printf("# times dominated:\n");
+        print_vec(vertex_count, num_dom);
+    #endif
+
+    int i; // loop counter
+    for(i = 0; i < vertex_count; i++) {
+        if(num_choice[i] == 0) {
+            return;
+        }
+    }
+
+    int n_extra = *n_dom / max_deg + (*n_dom % max_deg != 0);
+
+    if(*size + n_extra >= *min_size) {
+        return;
+    }
+
+    if(*n_dom == vertex_count) {
+        if(*size < *min_size) {
+            // TODO correct call to memcpy
+            memcpy(min_dom, dom, (NMAX - 1) * sizeof(int));
+            *min_size = *size;
+        }
+        return;
+    }
+
     // make vertex level blue
+    for(i = 0; i < vertex_count; i++) {
+        if(graph[level][i]) {
+            num_choice[i]--;
+        };
+    }
+
+    min_dom_set(level + 1, n_dom, num_choice, num_dom, size, dom, min_size, min_dom, vertex_count, max_deg, graph);
+
+    for(i = 0; i < vertex_count; i++) {
+        if(graph[level][i]) {
+            num_choice[i]++;
+        };
+    }
+
     // make vertex level red
-    // change back to white before returning
-    printf("%d\n", level);
+    dom[level] = 1;
+    for(i = 0; i < vertex_count; i++) {
+        if(graph[level][i]) {
+            if(!num_dom[i]) {
+                *n_dom++;
+            }
+            num_dom[i]++;
+        };
+    }
+
+    min_dom_set(level + 1, n_dom, num_choice, num_dom, size, dom, min_size, min_dom, vertex_count, max_deg, graph);
+
+    dom[level] = 0;
+    for(i = 0; i < vertex_count; i++) {
+        if(graph[level][i]) {
+            if(num_dom[i]) {
+                *n_dom--;
+            }
+            num_dom[i]--;
+        };
+    }
 }
+
+#if DEBUG
+void print_vec(int size, int* vec) {
+    int i;
+    for(i = 0; i < size; i++) {
+        printf("%d: %d\n", i, vec[i]);
+    }
+}
+#endif
