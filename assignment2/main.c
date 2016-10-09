@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
                 printf("%5d ", i);
             }
         }
-        printf("\n");
+        printf("\n\n");
         graph_ndx++;
     }
     return EXIT_SUCCESS;
@@ -190,6 +190,7 @@ void check_symmetric(int vertex_count, int graph[NMAX][NMAX], int graph_ndx) {
     }
 }
 
+// currently finds the first dominating set
 // recursively find the minimum dominating set
 // try to decide the status of vertex "level"
 void min_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX], int* size,
@@ -207,20 +208,20 @@ void min_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX],
 
     int i; // loop counter
     for(i = 0; i < vertex_count; i++) {
-        if(num_choice[i] == 0) {
+        if(!num_choice[i]) {
             return;
         }
     }
 
-    int n_extra = *n_dom / max_deg + (*n_dom % max_deg != 0);
+    int u = vertex_count - *n_dom;
+    int n_extra = u / max_deg + (u % max_deg != 0);
 
     if(*size + n_extra >= *min_size) {
         return;
     }
 
-    if(*n_dom == vertex_count) {
+    if(level == vertex_count || *n_dom == vertex_count) {
         if(*size < *min_size) {
-            // TODO correct call to memcpy
             memcpy(min_dom, dom, (NMAX - 1) * sizeof(int));
             *min_size = *size;
         }
@@ -260,11 +261,11 @@ void min_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX],
     min_dom_set(level + 1, n_dom, num_choice, num_dom, size, dom, min_size, min_dom, vertex_count, max_deg, graph);
 
     dom[level] = 0;
-    *size--;
+    *size -= 1;
     for(i = 0; i < vertex_count; i++) {
         if(graph[level][i]) {
             if(num_dom[i]) {
-                *n_dom--;
+                *n_dom -= 1;
             }
             num_dom[i]--;
         };
