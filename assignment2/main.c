@@ -3,7 +3,7 @@
 #include <string.h>
 
 #define NMAX 512
-#define DEBUG 1
+#define DEBUG 0
 
 void is_valid_vertex_count(int);
 void read_graph(int, int[NMAX][NMAX], int);
@@ -78,9 +78,11 @@ int main(int argc, char* argv[]) {
         }
 
         min_dom_set(0, &n_dominated, num_choice, num_dom, &size, dom, &min_size, min_dom, vertex_count, max_deg, graph);
-        printf("\n%d\n", min_size);
-        for(i = 0; i < min_size; i++) {
-            printf("%5d", min_dom[i]);
+        printf("\n%5d\n", min_size);
+        for(i = 0; i < vertex_count; i++) {
+            if(min_dom[i]) {
+                printf("%5d ", i);
+            }
         }
         printf("\n");
         graph_ndx++;
@@ -200,6 +202,7 @@ void min_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX],
         print_vec(vertex_count, num_choice);
         printf("# times dominated:\n");
         print_vec(vertex_count, num_dom);
+        printf("SIZE: %d MIN_SIZE: %d\n", *size, *min_size);
     #endif
 
     int i; // loop counter
@@ -241,18 +244,23 @@ void min_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX],
 
     // make vertex level red
     dom[level] = 1;
+    *size += 1;
     for(i = 0; i < vertex_count; i++) {
         if(graph[level][i]) {
-            if(!num_dom[i]) {
-                *n_dom++;
-            }
             num_dom[i]++;
         };
+    }
+    *n_dom = 0;
+    for(i = 0; i < vertex_count; i++) {
+        if(num_dom[i]) {
+            *n_dom += 1;
+        }
     }
 
     min_dom_set(level + 1, n_dom, num_choice, num_dom, size, dom, min_size, min_dom, vertex_count, max_deg, graph);
 
     dom[level] = 0;
+    *size--;
     for(i = 0; i < vertex_count; i++) {
         if(graph[level][i]) {
             if(num_dom[i]) {
