@@ -51,9 +51,9 @@ int main(int argc, char* argv[]) {
     int num_choice[NMAX]; // number of times it could be dominated
     int num_dom[NMAX]; // number of times it is dominated
     int size; // size of the current dominating set
-    int dom[NMAX - 1]; // current dominating set
+    int dom[NMAX]; // current dominating set
     int min_size; // size of minimum dominating set so far
-    int min_dom[NMAX - 1]; // minimum dominating set so far
+    int min_dom[NMAX]; // minimum dominating set so far
 
     int graph_num = 1;
     int i, j, deg_i, max_deg;
@@ -286,10 +286,10 @@ void min_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX],
 
         memset(num_dom, 0, vertex_count * sizeof(int));
         *size = 0;
-        memset(dom, 0, (vertex_count - 1) * sizeof(int));
+        memset(dom, 0, vertex_count * sizeof(int));
         *min_size = vertex_count;
 
-        memset(min_dom, 0, (vertex_count - 1) * sizeof(int));
+        memset(min_dom, 0, vertex_count * sizeof(int));
         for(i = 0; i < vertex_count; i++) {
             min_dom[i] = i;
         }
@@ -311,7 +311,7 @@ void min_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX],
 
     if(level == vertex_count || *n_dom == vertex_count) {
         if(*size < *min_size) {
-            memcpy(min_dom, dom, (vertex_count - 1) * sizeof(int));
+            memcpy(min_dom, dom, vertex_count * sizeof(int));
             *min_size = *size;
         }
         return;
@@ -362,9 +362,11 @@ void min_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX],
         };
     }
 
-    // return the graph to its original state.
-    for(i = 0; i < vertex_count; i++) {
-        G[i][i] = 0;
+    if(level == 0) {
+        // return the graph to its original state.
+        for(i = 0; i < vertex_count; i++) {
+            G[i][i] = 0;
+        }
     }
 }
 
