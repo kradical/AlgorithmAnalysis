@@ -21,7 +21,7 @@
 *****************************************************************************/
 #include <stdio.h> 
 
-#define DEBUG 0
+#define DEBUG 1
 #define NMAX 128
 #define MMAX ((NMAX +31)/ 32)
 
@@ -40,7 +40,7 @@ int read_graph(int*, int*, int[NMAX][MMAX]);
 void print_graph(int, int[NMAX][MMAX]);
 int set_size(int, int[]);
 void print_set(int, int[]);
-int find_dom_set(int, int, int, int, int[NMAX][MMAX], int[MMAX], int[MMAX]);
+int find_dom_set(int, int, int, int[NMAX][MMAX], int[MMAX], int[MMAX]);
 
 int bytecount[] = {
     0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
     while (read_graph(&n, &m, G)) {
         print_graph(n, G);
 
-        find_dom_set(0, 5, n, m, G, vertex_set, answer);
+        find_dom_set(0, n, m, G, vertex_set, answer);
 
         int d = set_size(n, answer);
         printf("%5d\n", d);
@@ -157,7 +157,7 @@ void print_set(int n, int set[]) {
    printf("\n");
 }
 
-int find_dom_set(int level, int k, int n, int m, int G[NMAX][MMAX], int dominated[MMAX], int dom_set[MMAX]) {
+int find_dom_set(int level, int n, int m, int G[NMAX][MMAX], int dominated[MMAX], int dom_set[MMAX]) {
     int new_dominated[MMAX];
     int i, j, u;
 
@@ -175,14 +175,10 @@ int find_dom_set(int level, int k, int n, int m, int G[NMAX][MMAX], int dominate
         }
     }
 
-    if (level == k) {
-        if (set_size(n, dom_set) == n) { // ??
-            printf("Dominating set: ");
-            print_set(n, dom_set);
-            return 1;
-        } else {
-            return 0;
-        }
+    if (set_size(n, dominated) == n) {
+	printf("Dominating set: ");
+	print_set(n, dom_set);
+	return 1;
     }
 
 #if DEBUG
@@ -190,16 +186,14 @@ int find_dom_set(int level, int k, int n, int m, int G[NMAX][MMAX], int dominate
     print_set(n, dominated);
 #endif
 
-    if (level >= 1) return 0; // students should write their own code.
-
-    u = 0;
-    ADD_ELEMENT(dom_set, u); // This would put vertex 0 into the dominating set:
+    u = level;
+    ADD_ELEMENT(dom_set, u); // This would put vertex u into the dominating set:
 
     for (j = 0; j < m; j++) {
         new_dominated[j] = dominated[j] | G[u][j];
     }
 
-    if (find_dom_set(level+1, k-1, n, m, G, new_dominated, dom_set)) {
+    if (find_dom_set(level+1, n, m, G, new_dominated, dom_set)) {
         return 1;
     }
 
