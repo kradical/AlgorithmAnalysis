@@ -56,8 +56,9 @@ void check_degree(int, int, int);
 void check_vertex(int, int, int);
 void check_graph(int, int[NMAX][MMAX], int);
 void print_graph(int, int[NMAX][MMAX]);
+void initialize_p(int, int[NMAX]);
 void print_set(int, int*);
-void min_dom_set(int, int*, int[NMAX], int[NMAX], int*, int[MMAX], int*, int[MMAX], int, int, int[NMAX][MMAX]);
+int find_dom_set(int, int*, int[NMAX], int[NMAX], int*, int[MMAX], int, int, int[NMAX][MMAX], int[NMAX]);
 void print_dom_set(int, int, int*);
 
 #if DEBUG
@@ -92,8 +93,7 @@ int main(int argc, char* argv[]) {
     int num_dom[NMAX]; // number of times it is dominated
     int size; // size of the current dominating set
     int dom[MMAX]; // current dominating set
-    int min_size; // size of minimum dominating set so far
-    int min_dom[MMAX]; // minimum dominating set so far
+    int p[NMAX];
 
     int graph_num = 1;
     int i, j, deg_i, max_deg;
@@ -101,8 +101,9 @@ int main(int argc, char* argv[]) {
         check_graph(vertex_count, G, graph_num);
         print_graph(vertex_count, G);
 
-        min_dom_set(0, &n_dominated, num_choice, num_dom, &size, dom, &min_size, min_dom, vertex_count, max_deg, G);
-        print_dom_set(min_size, vertex_count, min_dom);
+        initialize_p(vertex_count, p);
+        find_dom_set(0, &n_dominated, num_choice, num_dom, &size, dom, vertex_count, max_deg, G, p);
+        print_dom_set(size, vertex_count, dom);
 
         graph_num++;
     }
@@ -262,6 +263,23 @@ void print_graph(int vertex_count, int G[NMAX][MMAX]) {
     }
 }
 
+// Randomize method taken from wendy myrvold's 425 slides.
+void initialize_p(int vertex_count, int p[NMAX]) {
+    int i;
+    for(i = 0; i < vertex_count; i++) {
+        p[i] = i;
+    }
+
+    srand(time(NULL));
+    for (i = vertex_count - 1; i >= 1; i--) {
+        int r = rand() % (vertex_count - 1);
+
+        int temp = p[i];
+        p[i] = p[r];
+        p[r] = temp;
+    }
+}
+
 // Compute the size of a set.
 int set_size(int n, int set[]) {
     int j, m, d;
@@ -296,18 +314,14 @@ void print_set(int n, int set[]) {
 //   num_dom: an array of number of times each vertex is dominated.
 //   size: the size of the current dominating set.
 //   dom: the current dominating set
-//   min_size: the size of the current minimum dominating set.
-//   min_dom: the current minimum dominating set.
 //   vertex_count: the total number of vertices in the graph G.
 //   max_deg: the maximum degree of any vertice in graph G.
 //   G: the graph that a minimum dominating set is being found for.
 //
-// Populates min_size/min_dom with the final result.
-//
 // This algorithm is based on pseudocode from Wendy Myrvold's slides in CSC 425.
 // The colors refer to vertex states outlined in the slides.
-void min_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX], int* size,
-    int dom[MMAX], int* min_size, int min_dom[MMAX], int vertex_count, int max_deg, int G[NMAX][MMAX]) {
+int find_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX], int* size,
+    int dom[MMAX], int vertex_count, int max_deg, int G[NMAX][MMAX], int p[NMAX]) {
     
     #if DEBUG
         printf("\nLEVEL: %d\n", level);
@@ -316,7 +330,6 @@ void min_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX],
         print_vec(vertex_count, num_choice);
         printf("# times dominated:\n");
         print_vec(vertex_count, num_dom);
-        printf("SIZE: %d MIN_SIZE: %d\n", *size, *min_size);
     #endif
 
     // initialize all the data
@@ -342,57 +355,44 @@ void min_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX],
         memset(num_dom, 0, vertex_count * sizeof(int));
         *size = 0;
         memset(dom, 0, MMAX * sizeof(int));
-        *min_size = vertex_count;
-
-        memset(min_dom, 0, MMAX * sizeof(int));
-        for(i = 0; i < vertex_count; i++) {
-            ADD_ELEMENT(min_dom, i);
-        }
     }
 
     int i;
     for(i = 0; i < vertex_count; i++) {
         if(!num_choice[i]) {
-            return;
+            return 0;
         }
-    }
-
-    int u = vertex_count - *n_dom;
-    int n_extra = u / max_deg + (u % max_deg != 0);
-
-    if(*size + n_extra >= *min_size) {
-        return;
     }
 
     if(level == vertex_count || *n_dom == vertex_count) {
-        if(*size < *min_size) {
-            memcpy(min_dom, dom, MMAX * sizeof(int));
-            *min_size = *size;
-        }
-        return;
+        return 1;
     }
+
+    int u = p[level];
 
     // make vertex level blue
     for(i = 0; i < vertex_count; i++) {
-        if(IS_ELEMENT(G[level], i)) {
+        if(IS_ELEMENT(G[u], i)) {
             num_choice[i]--;
         };
     }
 
-    min_dom_set(level + 1, n_dom, num_choice, num_dom, size, dom, min_size, min_dom, vertex_count, max_deg, G);
+    if(find_dom_set(level + 1, n_dom, num_choice, num_dom, size, dom, vertex_count, max_deg, G, p)) {
+        return 1;
+    }
 
     // undo blue colouring
     for(i = 0; i < vertex_count; i++) {
-        if(IS_ELEMENT(G[level], i)) {
+        if(IS_ELEMENT(G[u], i)) {
             num_choice[i]++;
         };
     }
 
-    // make vertex level red
-    ADD_ELEMENT(dom, level);
+    // make vertex u red
+    ADD_ELEMENT(dom, u);
     *size += 1;
     for(i = 0; i < vertex_count; i++) {
-        if(IS_ELEMENT(G[level], i)) {
+        if(IS_ELEMENT(G[u], i)) {
             num_dom[i]++;
         };
     }
@@ -403,25 +403,20 @@ void min_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX],
         }
     }
 
-    min_dom_set(level + 1, n_dom, num_choice, num_dom, size, dom, min_size, min_dom, vertex_count, max_deg, G);
+    if(find_dom_set(level + 1, n_dom, num_choice, num_dom, size, dom, vertex_count, max_deg, G, p)) {
+        return 1;
+    }
 
     // undo red colouring
-    DEL_ELEMENT(dom, level);
+    DEL_ELEMENT(dom, u);
     *size -= 1;
     for(i = 0; i < vertex_count; i++) {
-        if(IS_ELEMENT(G[level], i)) {
+        if(IS_ELEMENT(G[u], i)) {
             if(num_dom[i]) {
                 *n_dom -= 1;
             }
             num_dom[i]--;
         };
-    }
-
-    if(level == 0) {
-        // return the graph to its original state.
-        for(i = 0; i < vertex_count; i++) {
-            DEL_ELEMENT(G[i], i);
-        }
     }
 }
 
