@@ -5,7 +5,7 @@
 #include <sys/times.h>
 
 // This program calculates a minimal dominating set for a graph given a heuristic and a time limit
-// The heuristic for this program is random.
+// The heuristic for this program is breadth first search.
 // Graphs are provided through standard input in the format specified by assignment 2.
 // The maximum size of a graph may be altered using NMAX and then recompiling.
 #define NMAX 2187
@@ -80,7 +80,6 @@ void check_vertex(int, int, int);
 void check_graph(int, int[NMAX][MMAX], int);
 void print_graph(int, int[NMAX][MMAX]);
 void initialize_p(int, int[NMAX]);
-void randomizeArr(int, int[NMAX]);
 int set_size(int, int*);
 void print_set(int, int*);
 int find_dom_set(int, int*, int[NMAX], int[NMAX], int*, int[MMAX], int, int, int[NMAX][MMAX], int[NMAX]);
@@ -128,7 +127,6 @@ int main(int argc, char* argv[]) {
     max_second = atoi(argv[1]);
     verbose = atoi(argv[2]);
 
-    srand(time(NULL)); // initialize seed
 
     int vertex_count; // graph is vertex_count x vertex_count in size
     int m; // size of compressed adjcency matrix
@@ -327,20 +325,16 @@ void print_graph(int vertex_count, int G[NMAX][MMAX]) {
     }
 }
 
-// Randomize method taken from Wendy Myrvold's example code.
+// Bfs method taken from Wendy Myrvold's example slides/code.
 void initialize_p(int vertex_count, int p[NMAX]) {
     int i;
     for(i = 0; i < vertex_count; i++) {
         p[i] = i;
     }
 
-    randomizeArr(vertex_count, p);
-}
-
-void randomizeArr(int vertex_count, int p[NMAX]) {
-    int i;
+    srand(time(NULL));
     for (i = vertex_count - 1; i >= 1; i--) {
-        int r = rand() % vertex_count;
+        int r = rand() % (vertex_count - 1);
 
         int temp = p[i];
         p[i] = p[r];

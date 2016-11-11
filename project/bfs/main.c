@@ -5,7 +5,7 @@
 #include <sys/times.h>
 
 // This program calculates a minimal dominating set for a graph given a heuristic and a time limit
-// The heuristic for this program is random.
+// The heuristic for this program is breadth first search.
 // Graphs are provided through standard input in the format specified by assignment 2.
 // The maximum size of a graph may be altered using NMAX and then recompiling.
 #define NMAX 2187
@@ -79,7 +79,7 @@ void check_degree(int, int, int);
 void check_vertex(int, int, int);
 void check_graph(int, int[NMAX][MMAX], int);
 void print_graph(int, int[NMAX][MMAX]);
-void initialize_p(int, int[NMAX]);
+void initialize_p(int, int[NMAX], int[NMAX][MMAX]);
 void randomizeArr(int, int[NMAX]);
 int set_size(int, int*);
 void print_set(int, int*);
@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
     max_second = atoi(argv[1]);
     verbose = atoi(argv[2]);
 
-    srand(time(NULL)); // initialize seed
+    srand(time(NULL));
 
     int vertex_count; // graph is vertex_count x vertex_count in size
     int m; // size of compressed adjcency matrix
@@ -151,7 +151,7 @@ int main(int argc, char* argv[]) {
         min_size = vertex_count;
         memset(min_dom, 0, MMAX * sizeof(int));
         do {
-            initialize_p(vertex_count, p);
+            initialize_p(vertex_count, p, G);
             find_dom_set(0, &n_dominated, num_choice, num_dom, &size, dom, vertex_count, max_deg, G, p);
             
             if(size < min_size) {
@@ -327,20 +327,45 @@ void print_graph(int vertex_count, int G[NMAX][MMAX]) {
     }
 }
 
-// Randomize method taken from Wendy Myrvold's example code.
-void initialize_p(int vertex_count, int p[NMAX]) {
-    int i;
-    for(i = 0; i < vertex_count; i++) {
-        p[i] = i;
-    }
+// Initializes p using a bfs with neighbours in random order
+void initialize_p(int vertex_count, int p[NMAX], int G[NMAX][MMAX]) {
+    int root = rand() % vertex_count;
+    int start, end;
 
-    randomizeArr(vertex_count, p);
+    start = 0;
+    end = 0;
+    p[end++] = root;
+
+    int visited[MMAX] = { 0 };
+    ADD_ELEMENT(visited, root);
+
+    int i, tempVertex, numNeighbours;
+    int neighbours[vertex_count];
+    while(start != end) {
+        tempVertex = p[start++];
+
+        numNeighbours = 0;
+        for(i = 0; i < vertex_count; i++) {
+            if(IS_ELEMENT(G[tempVertex], i)) {
+                if(!IS_ELEMENT(visited, i)) {
+                    neighbours[numNeighbours++] = i;
+                    ADD_ELEMENT(visited, i);
+                }
+            }
+        }
+
+        randomizeArr(numNeighbours, neighbours);
+        for(i = 0; i < numNeighbours; i++) {
+            p[end++] = neighbours[i];
+        }
+    }
 }
 
-void randomizeArr(int vertex_count, int p[NMAX]) {
+// Randomize array method taken from Wendy Myrvold's example code
+void randomizeArr(int size, int p[NMAX]) {
     int i;
-    for (i = vertex_count - 1; i >= 1; i--) {
-        int r = rand() % vertex_count;
+    for (i = size - 1; i >= 1; i--) {
+        int r = rand() % size;
 
         int temp = p[i];
         p[i] = p[r];
