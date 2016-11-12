@@ -5,7 +5,9 @@
 #include <sys/times.h>
 
 // This program calculates a minimal dominating set for a graph given a heuristic and a time limit
-// The heuristic for this program is breadth first search.
+// The heuristic for this program is similar to the breadth first search algorithm but instead of random
+// root and neighbours it is a weighted random by degree, for the next submission I'd like to try some
+// sort of genetic algorithm but I didn't have time this submission.
 // Graphs are provided through standard input in the format specified by assignment 2.
 // The maximum size of a graph may be altered using NMAX and then recompiling.
 #define NMAX 2187
@@ -79,7 +81,8 @@ void check_degree(int, int, int);
 void check_vertex(int, int, int);
 void check_graph(int, int[NMAX][MMAX], int);
 void print_graph(int, int[NMAX][MMAX]);
-void initialize_p(int, int[NMAX]);
+void initialize_p(int, int[NMAX], int[NMAX][MMAX]);
+int getNext(int, int[NMAX]);
 int set_size(int, int*);
 void print_set(int, int*);
 int find_dom_set(int, int*, int[NMAX], int[NMAX], int*, int[MMAX], int, int, int[NMAX][MMAX], int[NMAX]);
@@ -127,6 +130,7 @@ int main(int argc, char* argv[]) {
     max_second = atoi(argv[1]);
     verbose = atoi(argv[2]);
 
+    srand(time(NULL));
 
     int vertex_count; // graph is vertex_count x vertex_count in size
     int m; // size of compressed adjcency matrix
@@ -149,7 +153,7 @@ int main(int argc, char* argv[]) {
         min_size = vertex_count;
         memset(min_dom, 0, MMAX * sizeof(int));
         do {
-            initialize_p(vertex_count, p);
+            initialize_p(vertex_count, p, G);
             find_dom_set(0, &n_dominated, num_choice, num_dom, &size, dom, vertex_count, max_deg, G, p);
             
             if(size < min_size) {
@@ -325,21 +329,78 @@ void print_graph(int vertex_count, int G[NMAX][MMAX]) {
     }
 }
 
-// Bfs method taken from Wendy Myrvold's example slides/code.
-void initialize_p(int vertex_count, int p[NMAX]) {
+// Initializes p using a bfs with neighbours in random order
+void initialize_p(int vertex_count, int p[NMAX], int G[NMAX][MMAX]) {
+    int degreeArr[vertex_count];
     int i;
     for(i = 0; i < vertex_count; i++) {
-        p[i] = i;
+        degreeArr[i] = set_size(vertex_count, G[i]);
     }
 
-    srand(time(NULL));
-    for (i = vertex_count - 1; i >= 1; i--) {
-        int r = rand() % (vertex_count - 1);
+    int root = getNext(vertex_count, degreeArr);
+    int start, end;
 
-        int temp = p[i];
-        p[i] = p[r];
-        p[r] = temp;
+    start = 0;
+    end = 0;
+    p[end++] = root;
+
+    int visited[MMAX] = { 0 };
+    ADD_ELEMENT(visited, root);
+
+    int j, tempVertex, numNeighbours;
+    int neighbours[vertex_count];
+    while(start != end) {
+        tempVertex = p[start++];
+
+        numNeighbours = 0;
+        for(i = 0; i < vertex_count; i++) {
+            if(IS_ELEMENT(G[tempVertex], i)) {
+                if(!IS_ELEMENT(visited, i)) {
+                    neighbours[numNeighbours++] = i;
+                    ADD_ELEMENT(visited, i);
+                }
+            }
+        }
+
+        for(i = 0; i < numNeighbours; i++) {
+            for(j = i; j < numNeighbours - i; j++) {
+                degreeArr[j - i] = set_size(vertex_count, G[neighbours[j]]);
+            }
+            int nextIndex = getNext(numNeighbours - i, degreeArr);
+            p[end++] = neighbours[nextIndex + i];
+            neighbours[nextIndex] = neighbours[i];
+        }
     }
+}
+
+// returns an index of some array
+int getNext(int size, int degreeArr[]) {
+    int sums[size];
+
+    int i;
+    sums[0] = degreeArr[0];
+    for(i = 1; i < size; i++) {
+        sums[i] = sums[i - 1] + degreeArr[i];
+    }
+
+    int randValue = rand() % sums[size - 1];
+
+    int first = 0;
+    int last = size - 1;
+    int middle = (first + last) / 2;
+
+    while(first <= last) {
+        if(sums[middle] < randValue) {
+            first = middle + 1;
+        } else if (sums[middle] == randValue) {
+            break;
+        } else {
+            last = middle - 1;
+        }
+        middle = (first + last) / 2;
+    }
+
+    return middle;
 }
 
 // Compute the size of a set.
@@ -420,6 +481,11 @@ int find_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX],
     }
 
     if(level == vertex_count || *n_dom == vertex_count) {
+        // undo changes to diagonal of graph
+        int i;
+        for(i = 0; i < vertex_count; i++) {
+            DEL_ELEMENT(G[i], i);
+        }
         return 1;
     }
 

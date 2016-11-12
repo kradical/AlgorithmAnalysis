@@ -426,6 +426,11 @@ int find_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX],
     }
 
     if(level == vertex_count || *n_dom == vertex_count) {
+        // undo changes to diagonal of graph
+        int i;
+        for(i = 0; i < vertex_count; i++) {
+            DEL_ELEMENT(G[i], i);
+        }
         return 1;
     }
 
