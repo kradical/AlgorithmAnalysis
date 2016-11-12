@@ -23,6 +23,15 @@ To run:
 To check if it is a correct dominating set use assignment 1:
 - run `./a.out < in.txt | ../assignment1/a.out 0`
 
-## Assignment 3
+## Project
+### Dominating Set Heuristics
+This project consists of 3 heuristics:
+- Random
+- Random BFS
+- Our own heuristic (Random Genetic for me)
 
-## Assignment 4
+To run:
+- navigate to the correct folder
+- compile `gcc main.c`
+- run `./a.out 5 0 < in.txt > out.txt` in terse mode for 5 seconds
+- run `./a.out 10 1 < in.txt > out.txt` in verbose mode for 10 seconds
