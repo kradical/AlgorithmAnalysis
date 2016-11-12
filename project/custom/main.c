@@ -329,51 +329,29 @@ void print_graph(int vertex_count, int G[NMAX][MMAX]) {
     }
 }
 
-// Initializes p using a bfs with neighbours in random order
+// Initializes p using randomly selected values weighted by degree.
 void initialize_p(int vertex_count, int p[NMAX], int G[NMAX][MMAX]) {
     int degreeArr[vertex_count];
+    int vertexArr[vertex_count];
     int i;
     for(i = 0; i < vertex_count; i++) {
         degreeArr[i] = set_size(vertex_count, G[i]);
+        vertexArr[i] = i;
     }
 
-    int root = getNext(vertex_count, degreeArr);
-    int start, end;
+    int nextIndex;
+    int size = vertex_count;
+    for(i = 0; i < vertex_count; i++) {
+        nextIndex = getNext(size--, degreeArr);
+        p[i] = vertexArr[nextIndex];
 
-    start = 0;
-    end = 0;
-    p[end++] = root;
-
-    int visited[MMAX] = { 0 };
-    ADD_ELEMENT(visited, root);
-
-    int j, tempVertex, numNeighbours;
-    int neighbours[vertex_count];
-    while(start != end) {
-        tempVertex = p[start++];
-
-        numNeighbours = 0;
-        for(i = 0; i < vertex_count; i++) {
-            if(IS_ELEMENT(G[tempVertex], i)) {
-                if(!IS_ELEMENT(visited, i)) {
-                    neighbours[numNeighbours++] = i;
-                    ADD_ELEMENT(visited, i);
-                }
-            }
-        }
-
-        for(i = 0; i < numNeighbours; i++) {
-            for(j = i; j < numNeighbours - i; j++) {
-                degreeArr[j - i] = set_size(vertex_count, G[neighbours[j]]);
-            }
-            int nextIndex = getNext(numNeighbours - i, degreeArr);
-            p[end++] = neighbours[nextIndex + i];
-            neighbours[nextIndex] = neighbours[i];
-        }
+        // Maintain the 2 arrays by adding end value into used slot
+        vertexArr[nextIndex] = vertexArr[size];
+        degreeArr[nextIndex] = degreeArr[size];
     }
 }
 
-// returns an index of some array
+// Randomly selects an index weighted by the values in the array.
 int getNext(int size, int degreeArr[]) {
     int sums[size];
 
