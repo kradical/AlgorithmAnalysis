@@ -128,8 +128,6 @@ int main(int argc, char* argv[]) {
     max_second = atoi(argv[1]);
     verbose = atoi(argv[2]);
 
-    srand(time(NULL)); // initialize seed
-
     int vertex_count; // graph is vertex_count x vertex_count in size
     int m; // size of compressed adjcency matrix
     int G[NMAX][MMAX]; // compressed adjacency matrix form of a graph
@@ -150,6 +148,8 @@ int main(int argc, char* argv[]) {
 
         min_size = vertex_count;
         memset(min_dom, 0, MMAX * sizeof(int));
+
+        start_timer();
         do {
             initialize_p(vertex_count, p);
             find_dom_set(0, &n_dominated, num_choice, num_dom, &size, dom, vertex_count, max_deg, G, p);
@@ -338,13 +338,12 @@ void initialize_p(int vertex_count, int p[NMAX]) {
 }
 
 void randomizeArr(int vertex_count, int p[NMAX]) {
-    int i;
-    for (i = vertex_count - 1; i >= 1; i--) {
-        int r = rand() % vertex_count;
-
-        int temp = p[i];
-        p[i] = p[r];
-        p[r] = temp;
+    int i, j, t;
+    for (i = 0; i < vertex_count - 1; i++) {
+        j = i + rand() / (RAND_MAX / (vertex_count - i) + 1);
+        t = p[j];
+        p[j] = p[i];
+        p[i] = t;
     }
 }
 

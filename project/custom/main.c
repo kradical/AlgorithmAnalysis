@@ -5,15 +5,11 @@
 #include <sys/times.h>
 
 // This program calculates a minimal dominating set for a graph given a heuristic and a time limit
-// The heuristic for this program is similar to the breadth first search algorithm but instead of random
-// root and neighbours it is a genetic algorithm that starts with a set of random orders and permutes 
-// them slightly and tests them. It seems to do better than random and I'm sure there are ways to tweak
-// it to make it better I just ran out of time for this submission.
+// The heuristic for this program is random.
 // Graphs are provided through standard input in the format specified by assignment 2.
 // The maximum size of a graph may be altered using NMAX and then recompiling.
 #define NMAX 2187
 #define MMAX ((NMAX +31)/ 32)
-#define GENSETSIZE 6
 
 // This bitset operations code was taken from Brendan McKay's nauty
 /*****************************************************************************
@@ -82,16 +78,13 @@ void read_vertex(int, int, int[NMAX][MMAX], int);
 void check_degree(int, int, int);
 void check_vertex(int, int, int);
 void check_graph(int, int[NMAX][MMAX], int);
-void initialize_p(int, int[NMAX]);
-void randomize_arr(int, int[NMAX]);
-void sort_sets(int*, int[GENSETSIZE][NMAX], int[GENSETSIZE][MMAX]);
-void permute(int, int[NMAX], int[NMAX]);
-void merge_sets(int*, int[GENSETSIZE][NMAX], int[GENSETSIZE][MMAX], int*, int[GENSETSIZE][NMAX], int[GENSETSIZE][MMAX]);
 void print_graph(int, int[NMAX][MMAX]);
+void randomizeArr(int, int[NMAX]);
+long random_at_most(long);
 int set_size(int, int*);
 void print_set(int, int*);
-void print_dom_set(int, int, int*);
 int find_dom_set(int, int*, int[NMAX], int[NMAX], int*, int[MMAX], int, int, int[NMAX][MMAX], int[NMAX]);
+void print_dom_set(int, int, int*);
 
 // Verbose output flag
 int verbose;
@@ -135,8 +128,6 @@ int main(int argc, char* argv[]) {
     max_second = atoi(argv[1]);
     verbose = atoi(argv[2]);
 
-    srand(time(NULL));
-
     int vertex_count; // graph is vertex_count x vertex_count in size
     int m; // size of compressed adjcency matrix
     int G[NMAX][MMAX]; // compressed adjacency matrix form of a graph
@@ -149,43 +140,27 @@ int main(int argc, char* argv[]) {
 
     int min_dom[MMAX]; // minimum dominating set
     int min_size; // size of minimum dominating set found so far
-    
-    int best_sets[GENSETSIZE][NMAX]; // best orders
-    int best_sizes[GENSETSIZE]; // best sizes
-    int best_doms[GENSETSIZE][MMAX]; // best dominating sets
-    int test_sets[GENSETSIZE][NMAX]; // test orders
-    int test_sizes[GENSETSIZE]; // test sizes
-    int test_doms[GENSETSIZE][MMAX]; // test dominating sets
 
     int graph_num = 1;
     int i, j, deg_i, max_deg;
     while(read_graph(&vertex_count, &m, G, graph_num)) {
         check_graph(vertex_count, G, graph_num);
 
-        // Set up some randomized orders to kick off the genetic algorithm
         min_size = vertex_count;
         memset(min_dom, 0, MMAX * sizeof(int));
-        memset(best_sets, 0, GENSETSIZE * NMAX * sizeof(int));
-        int best_sizes[GENSETSIZE] = { vertex_count };
-        for(i = 0; i < GENSETSIZE; i++) {
-            initialize_p(vertex_count, best_sets[i]);
-            find_dom_set(0, &n_dominated, num_choice, num_dom, &best_sizes[i], best_doms[i], vertex_count, max_deg, G, best_sets[i]);
+
+        for(i = 0; i < vertex_count; i++) {
+            p[i] = i;
         }
 
-        sort_sets(best_sizes, best_sets, best_doms);
-
+        start_timer();
         do {
-            for(i = 0; i < GENSETSIZE; i++) {
-                permute(vertex_count, best_sets[i], test_sets[i]);
-                find_dom_set(0, &n_dominated, num_choice, num_dom, &test_sizes[i], test_doms[i], vertex_count, max_deg, G, test_sets[i]);
-            }
-
-            sort_sets(test_sizes, test_sets, test_doms);
-            merge_sets(best_sizes, best_sets, best_doms, test_sizes, test_sets, test_doms);
-
-            if(best_sizes[0] < min_size) {
-                min_size = best_sizes[0];
-                memcpy(min_dom, best_doms[0], MMAX * sizeof(int));
+            randomizeArr(vertex_count, p);
+            find_dom_set(0, &n_dominated, num_choice, num_dom, &size, dom, vertex_count, max_deg, G, p);
+            
+            if(size < min_size) {
+                min_size = size;
+                memcpy(min_dom, dom, MMAX * sizeof(int));
             }
         } while(check_timer() < (float) max_second);
 
@@ -194,7 +169,7 @@ int main(int argc, char* argv[]) {
            print_graph(vertex_count, G);
            print_dom_set(min_size, vertex_count, min_dom);
         } else {
-           printf("%4d %4d   %3d\n", graph_num, vertex_count, best_sizes[0]);
+           printf("%4d %4d   %3d\n", graph_num, vertex_count, min_size);
         }
         fflush(stdout);
 
@@ -341,95 +316,6 @@ void check_graph(int vertex_count, int G[NMAX][MMAX], int graph_num) {
     }
 }
 
-// Initializes p to a random permutation
-void initialize_p(int vertex_count, int p[NMAX]) {
-    int i;
-    for(i = 0; i < vertex_count; i++) {
-        p[i] = i;
-    }
-
-    randomize_arr(vertex_count, p);
-}
-
-// Randomize method mostly taken from Wendy Myrvold's example code.
-void randomize_arr(int vertex_count, int p[NMAX]) {
-    int i;
-    for (i = vertex_count - 1; i >= 1; i--) {
-        int r = rand() % vertex_count;
-
-        int temp = p[i];
-        p[i] = p[r];
-        p[r] = temp;
-    }
-}
-
-// Sorts the sizes / orders / dominating sets by the sizes
-void sort_sets(int* sizes, int sets[GENSETSIZE][NMAX], int dom[GENSETSIZE][MMAX]) {
-    int swapSet[NMAX];
-    int swapDom[MMAX];
-    int i, j, position, swap;
-    for(i = 0; i < GENSETSIZE - 1; i++) {
-        position = i;
-        for(j = i + 1; j < GENSETSIZE; j++) {
-            if(sizes[position] > sizes[j]) {
-                position = j;
-            }
-        }
-        if(position != i ) {
-            swap = sizes[i];
-            sizes[i] = sizes[position];
-            sizes[position] = swap;
-            
-            memcpy(swapSet, sets[i], NMAX * sizeof(int));
-            memcpy(sets[i], sets[position], NMAX * sizeof(int));
-            memcpy(sets[position], swapSet, NMAX * sizeof(int));
-
-            memcpy(swapDom, dom[i], MMAX * sizeof(int));
-            memcpy(dom[i], dom[position], MMAX * sizeof(int));
-            memcpy(dom[position], swapDom, MMAX * sizeof(int));
-        }
-   }
-}
-
-// Give a permutation of a good order for the genetic algorithm
-void permute(int vertex_count, int best[NMAX], int test[NMAX]) {
-    memcpy(test, best, NMAX * sizeof(int));
-
-    int pos1 = rand() % vertex_count;
-    int pos2 = rand() % vertex_count;
-
-    int temp = test[pos1];
-    test[pos1] = test[pos2];
-    test[pos2] = temp;
-}
-
-// Merges two sorted sizes / orders / dominating sets
-void merge_sets(int* best_sizes, int best_sets[GENSETSIZE][NMAX], int best_doms[GENSETSIZE][MMAX],
-    int* test_sizes, int test_sets[GENSETSIZE][NMAX], int test_doms[GENSETSIZE][MMAX]) {
-    
-    int temp[GENSETSIZE][NMAX];
-    int temp_sizes[GENSETSIZE];
-    int temp_doms[GENSETSIZE][MMAX];
-    int i, j;
-    for(i = 0, j = 0; i + j < GENSETSIZE;) {
-        if(best_sizes[i] < test_sizes[j]) {
-            memcpy(temp[i + j], best_sets[i], NMAX * sizeof(int));
-            temp_sizes[i + j] = best_sizes[i];
-            memcpy(temp_doms[i + j], best_doms[i], MMAX * sizeof(int));
-            i++;
-        } else {
-            memcpy(temp[i + j], test_sets[j], NMAX * sizeof(int));
-            temp_sizes[i + j] = test_sizes[j];
-            memcpy(temp_doms[i + j], test_doms[j], MMAX * sizeof(int));
-            j++;
-        }
-    }
-
-    memcpy(best_sets, temp, GENSETSIZE * NMAX * sizeof(int));
-    memcpy(best_sizes, temp_sizes, GENSETSIZE * sizeof(int));
-    memcpy(best_doms, temp_doms, GENSETSIZE * MMAX * sizeof(int));
-}
-
 // Prints the graph in an adjacency list format with degree and vertex count.
 // Parameters:
 //   vertex_count: the total number of vertices in the graph.
@@ -445,6 +331,36 @@ void print_graph(int vertex_count, int G[NMAX][MMAX]) {
     }
 }
 
+void randomizeArr(int vertex_count, int p[NMAX]) {
+    int i, j, t;
+    for (i = vertex_count - 1; i > 0; i--) {
+        int j = random_at_most(i);
+        
+        t = p[i];
+        p[i] = p[j];
+        p[j] = t;
+    }
+}
+
+// Assumes 0 <= max <= RAND_MAX
+// Returns in the closed interval [0, max]
+long random_at_most(long max) {
+    unsigned long
+    // max <= RAND_MAX < ULONG_MAX, so this is okay.
+    num_bins = (unsigned long) max + 1,
+    num_rand = (unsigned long) RAND_MAX + 1,
+    bin_size = num_rand / num_bins,
+    defect   = num_rand % num_bins;
+
+    long x;
+    
+    do {
+        x = random();
+    }
+    while (num_rand - defect <= (unsigned long)x);
+    return x / bin_size;
+}
+
 // Compute the size of a set.
 // Taken from Wendy Myrvold's example code.
 int set_size(int n, int set[]) {
@@ -454,7 +370,7 @@ int set_size(int n, int set[]) {
     d = 0;
 
     for(j = 0; j < m; j++) {
-        d += POP_COUNT(set[j]);
+       d += POP_COUNT(set[j]);
     }
 
     return d;
@@ -463,25 +379,14 @@ int set_size(int n, int set[]) {
 // Prints a set.
 // Taken from Wendy Myrvold's example code.
 void print_set(int n, int set[]) {
-    int i;
+   int i;
 
-    for(i = 0; i < n; i++) {
-        if (IS_ELEMENT(set, i)) {
-            printf("%5d", i);
-        }
-    }
-    printf("\n");
-}
-
-// Print a dominating set.
-// Parameters:
-//   size: the size of the dominating set.
-//   vertex_count: the total number of vertices in the graph.
-//   dom: the dominating set.
-void print_dom_set(int size, int vertex_count, int* dom) {
-    printf("\n%5d\n", size);
-    print_set(vertex_count, dom);
-    printf("\n");
+   for(i = 0; i < n; i++) {
+       if (IS_ELEMENT(set, i)) {
+           printf("%5d", i);
+       }
+   }
+   printf("\n");
 }
 
 // Recursively find the minimum dominating set
@@ -592,4 +497,15 @@ int find_dom_set(int level, int* n_dom, int num_choice[NMAX], int num_dom[NMAX],
             num_dom[i]--;
         };
     }
+}
+
+// Print a dominating set.
+// Parameters:
+//   size: the size of the dominating set.
+//   vertex_count: the total number of vertices in the graph.
+//   dom: the dominating set.
+void print_dom_set(int size, int vertex_count, int* dom) {
+    printf("\n%5d\n", size);
+    print_set(vertex_count, dom);
+    printf("\n");
 }
